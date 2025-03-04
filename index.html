@@ -12,11 +12,11 @@
     <div class="container">
       <video id="video" height="500" width="500" autoplay muted></video>
     </div>
-    <div class="result-container">
-      <div id="emotion">Emotion</div>
-      <div id="gender">Gender</div>
-      <div id="age">Age</div>
-    </div>
+
+    <button onclick="registerFace(prompt('Nhập tên để đăng ký:'))">
+      📸 Đăng ký khuôn mặt
+    </button>
+    <button onclick="verifyFace()">🔍 Xác nhận khuôn mặt</button>
 
     <script src="./js/face-api.min.js"></script>
     <script src="./js/main.js"></script>

@@ -1,36 +1,77 @@
 const video = document.getElementById("video");
 const isScreenSmall = window.matchMedia("(max-width: 700px)");
 let predictedAges = [];
+let registeredDescriptors = {};
 
 Promise.all([
-  faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
-  faceapi.nets.faceLandmark68Net.loadFromUri("/models"),
-  faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
-  faceapi.nets.faceExpressionNet.loadFromUri("/models"),
-  faceapi.nets.ageGenderNet.loadFromUri("/models")
+  faceapi.nets.tinyFaceDetector.loadFromUri("./models"),
+  faceapi.nets.faceLandmark68Net.loadFromUri("./models"),
+  faceapi.nets.faceRecognitionNet.loadFromUri("./models"),
+  faceapi.nets.faceExpressionNet.loadFromUri("./models"),
+  faceapi.nets.ageGenderNet.loadFromUri("./models"),
 ]).then(startVideo);
 
 function startVideo() {
-  navigator.getUserMedia(
-    { video: {} },
-    stream => (video.srcObject = stream),
-    err => console.error(err)
-  );
-}
-function screenResize(isScreenSmall) {
-  if (isScreenSmall.matches) {
-    // If media query matches
-    video.style.width = "320px";
-  } else {
-    video.style.width = "500px";
-  }
+  navigator.mediaDevices
+    .getUserMedia({ video: {} })
+    .then((stream) => (video.srcObject = stream))
+    .catch((err) => console.error("Lỗi khi bật webcam:", err));
 }
 
-screenResize(isScreenSmall); // Call listener function at run time
+// Đăng ký khuôn mặt
+async function registerFace(label) {
+  const detections = await faceapi
+    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+
+  if (!detections) {
+    alert("❌ Không tìm thấy khuôn mặt, hãy thử lại!");
+    return;
+  }
+
+  registeredDescriptors[label] = new faceapi.LabeledFaceDescriptors(label, [
+    new Float32Array(detections.descriptor),
+  ]);
+
+  alert(`✅ Đã lưu khuôn mặt của ${label}`);
+}
+
+// 📌 Xác nhận khuôn mặt
+async function verifyFace() {
+  if (Object.keys(registeredDescriptors).length === 0) {
+    alert("❌ Chưa có khuôn mặt nào được đăng ký!");
+    return;
+  }
+
+  const detections = await faceapi
+    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+
+  if (!detections) {
+    alert("❌ Không tìm thấy khuôn mặt!");
+    return;
+  }
+
+  const faceMatcher = new faceapi.FaceMatcher(
+    Object.values(registeredDescriptors),
+    0.6
+  );
+
+  const bestMatch = faceMatcher.findBestMatch(detections.descriptor);
+  alert(`🔍 Kết quả: ${bestMatch.toString()}`);
+}
+
+function screenResize(isScreenSmall) {
+  video.style.width = isScreenSmall.matches ? "320px" : "500px";
+}
+screenResize(isScreenSmall);
 isScreenSmall.addListener(screenResize);
 
 video.addEventListener("playing", () => {
-  console.log("playing called");
+  console.log("Webcam đã hoạt động!");
+
   const canvas = faceapi.createCanvasFromMedia(video);
   let container = document.querySelector(".container");
   container.append(canvas);
@@ -40,32 +81,38 @@ video.addEventListener("playing", () => {
 
   setInterval(async () => {
     const detections = await faceapi
-      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+      .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks()
       .withFaceExpressions()
       .withAgeAndGender();
 
-    const resizedDetections = faceapi.resizeResults(detections, displaySize);
-    console.log(resizedDetections);
+    if (!detections || detections.length === 0) {
+      console.log("Không phát hiện khuôn mặt!");
+      return;
+    }
 
+    const resizedDetections = faceapi.resizeResults(detections, displaySize);
     canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
 
     faceapi.draw.drawDetections(canvas, resizedDetections);
     faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-    if (resizedDetections && Object.keys(resizedDetections).length > 0) {
-      const age = resizedDetections.age;
+
+    resizedDetections.forEach((detection, i) => {
+      const { age, gender, expressions, detection: faceBox } = detection;
       const interpolatedAge = interpolateAgePredictions(age);
-      const gender = resizedDetections.gender;
-      const expressions = resizedDetections.expressions;
-      const maxValue = Math.max(...Object.values(expressions));
-      const emotion = Object.keys(expressions).filter(
-        item => expressions[item] === maxValue
+      const emotion = Object.keys(expressions).reduce((a, b) =>
+        expressions[a] > expressions[b] ? a : b
       );
-      document.getElementById("age").innerText = `Age - ${interpolatedAge}`;
-      document.getElementById("gender").innerText = `Gender - ${gender}`;
-      document.getElementById("emotion").innerText = `Emotion - ${emotion[0]}`;
-    }
-  }, 10);
+
+      const box = faceBox.box;
+      const drawBox = new faceapi.draw.DrawBox(box, {
+        label: `👤 ${gender}, ${Math.round(
+          interpolatedAge
+        )} tuổi, 😃 ${emotion}`,
+      });
+      drawBox.draw(canvas);
+    });
+  }, 500);
 });
 
 function interpolateAgePredictions(age) {
