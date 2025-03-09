@@ -50,3 +50,41 @@ header {
   padding: 1rem;
   font-size: 2rem;
 }
+
+.container {
+  margin: 20px 0;
+  position: relative;
+  border-radius: 10px; /* Bo tròn góc */
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3); /* Bóng đổ sâu */
+  border: 10px solid #ddd; /* Đường viền dày */
+  background-color: #f9f9f9; /* Màu nền nhẹ */
+}
+
+#video {
+  display: block;
+  width: 100%; /* Video chiếm toàn bộ chiều rộng container */
+  height: auto; /* Chiều cao tự động điều chỉnh */
+  border-radius: 0; /* Loại bỏ bo tròn góc video */
+}
+
+/* Hiệu ứng khung tranh cổ điển */
+.container.classic-frame {
+  border: 20px solid #b8860b; /* Đường viền màu vàng đồng */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Hiệu ứng khung tranh gỗ */
+.container.wood-frame {
+  border: 15px solid #8b4513; /* Đường viền màu nâu gỗ */
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  background-image: url("path/to/wood-texture.jpg"); /* Thêm texture gỗ (tùy chọn) */
+  background-size: cover;
+}
+
+/* Hiệu ứng khung tranh hiện đại */
+.container.modern-frame {
+  border: 8px solid #333; /* Đường viền màu đen */
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+  background-color: #fff;
+}
